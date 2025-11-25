@@ -26,7 +26,7 @@ A simple, modular Neovim plugin to manage a local knowledge base using Markdown 
 return {
     {
         "Youchunmaru/skb.nvim",
-        main = "kb", 
+        main = "skb", 
         -- 'dir' points to your config root, allowing us to 'require' the local module
         opts = {
             --kb_path = "~/knowledge_base",
@@ -44,37 +44,37 @@ return {
         keys = {
             { 
                 "<leader>ns", 
-                function() require("kb").search_notes() end, 
+                function() require("skb").search_notes() end, 
                 desc = "[N]otes [S]earch (Grep)" 
             },
             { 
                 "<leader>nf", 
-                function() require("kb").find_notes() end, 
+                function() require("skb").find_notes() end, 
                 desc = "[N]otes [F]ind File" 
             },
             { 
                 "<leader>nn", 
-                function() require("kb").new_note() end, 
+                function() require("skb").new_note() end, 
                 desc = "[N]ew [N]ote" 
             },
             { 
                 "<leader>ng", 
-                function() require("kb").git_sync() end, 
+                function() require("skb").git_sync() end, 
                 desc = "[N]otes [G]it Sync" 
             },
             { 
                 "<leader>nh", 
-                function() require("kb").note_history() end, 
+                function() require("skb").note_history() end, 
                 desc = "[N]ote [H]istory (File)" 
             },
             { 
                 "<leader>nH", 
-                function() require("kb").search_history() end, 
+                function() require("skb").search_history() end, 
                 desc = "[N]ote [H]istory (Global)" 
             },
             { 
                 "<leader>nc", 
-                function() require("kb").note_changes() end, 
+                function() require("skb").note_changes() end, 
                 desc = "[N]ote [C]hanges (Status)" 
             },
         },
