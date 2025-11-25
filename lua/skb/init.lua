@@ -153,6 +153,7 @@ function M.git_sync()
 	-- 5. git push
 	local cmd = string.format("cd %s && git add . && git commit -m '%s'", path, commit_msg)
 	if M.config.options.git.remote then
+		vim.notify("Syncing with remote!", vim.log.levels.INFO)
 		cmd = cmd .. " && git pull --rebase && git push"
 	end
 
