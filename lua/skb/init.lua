@@ -165,13 +165,18 @@ function M.git_sync()
 			if code == 0 then
 				vim.notify("Knowledge Base Synced Successfully!", vim.log.levels.INFO)
 			else
-				vim.notify("Git Sync Failed. Check :messages", vim.log.levels.ERROR)
+				vim.notify("Git Sync Failed with code " .. code .. ". Check :messages", vim.log.levels.ERROR)
 			end
 		end,
 		on_stderr = function(_, data, _)
 			-- Log errors to :messages
 			if data then
 				-- formatting for cleaner logs
+				for _, line in ipairs(data) do
+					if line ~= "" then
+						vim.notify("Git Error: " .. line, vim.log.levels.ERROR)
+					end
+				end
 			end
 		end,
 	})
