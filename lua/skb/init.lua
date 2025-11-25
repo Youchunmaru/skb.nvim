@@ -54,7 +54,7 @@ function M.find_notes()
 
 	builtin.find_files({
 		prompt_title = "Find Notes",
-		cwd = M.config.skb_path,
+		cwd = M.config.options.skb_path,
 	})
 end
 
