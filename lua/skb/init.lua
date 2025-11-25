@@ -19,7 +19,7 @@ local function ensure_dir()
 	end
 
 	-- 2. Initialize Git if enabled and .git folder is missing
-	if M.config.options.git_enabled then
+	if M.config.options.git.enabled then
 		local git_dir = M.config.options.skb_path .. "/.git"
 		if vim.fn.isdirectory(git_dir) == 0 then
 			-- Run git init
@@ -151,8 +151,11 @@ function M.git_sync()
 	-- 3. git commit
 	-- 4. git pull --rebase (to avoid conflicts)
 	-- 5. git push
-	local cmd =
-		string.format("cd %s && git add . && git commit -m '%s' && git pull --rebase && git push", path, commit_msg)
+	local cmd = string.format("cd %s && git add . && git commit -m '%s'", path, commit_msg)
+	if M.config.options.git.remote then
+		cmd =
+			string.format("cd %s && git add . && git commit -m '%s' && git pull --rebase && git push", path, commit_msg)
+	end
 
 	vim.notify("Starting Git Sync...", vim.log.levels.INFO)
 
