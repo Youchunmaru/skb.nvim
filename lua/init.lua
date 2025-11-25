@@ -14,16 +14,16 @@ end
 -- Helper: Ensure directory exists
 local function ensure_dir()
 	-- 1. Create the directory if it doesn't exist
-	if vim.fn.isdirectory(M.config.kb_path) == 0 then
-		vim.fn.mkdir(M.config.kb_path, "p")
+	if vim.fn.isdirectory(M.config.options.skb_path) == 0 then
+		vim.fn.mkdir(M.config.options.skb_path, "p")
 	end
 
 	-- 2. Initialize Git if enabled and .git folder is missing
-	if M.config.git_enabled then
-		local git_dir = M.config.kb_path .. "/.git"
+	if M.config.options.git_enabled then
+		local git_dir = M.config.options.skb_path .. "/.git"
 		if vim.fn.isdirectory(git_dir) == 0 then
 			-- Run git init
-			vim.fn.system("cd " .. M.config.kb_path .. " && git init")
+			vim.fn.system("cd " .. M.config.options.skb_path .. " && git init")
 			vim.notify("Knowledge Base: Git repository initialized.", vim.log.levels.INFO)
 		end
 	end
@@ -40,7 +40,7 @@ function M.search_notes()
 
 	builtin.live_grep({
 		prompt_title = "Search Knowledge Base",
-		cwd = M.config.kb_path,
+		cwd = M.config.options.skb_path,
 	})
 end
 
@@ -54,7 +54,7 @@ function M.find_notes()
 
 	builtin.find_files({
 		prompt_title = "Find Notes",
-		cwd = M.config.kb_path,
+		cwd = M.config.skb_path,
 	})
 end
 
@@ -70,7 +70,7 @@ function M.search_history()
 	-- but the preview window serves as a great way to view changes.
 	builtin.git_commits({
 		prompt_title = "Knowledge Base History (Global)",
-		cwd = M.config.kb_path,
+		cwd = M.config.options.skb_path,
 	})
 end
 
@@ -84,7 +84,7 @@ function M.note_history()
 
 	builtin.git_bcommits({
 		prompt_title = "Current Note History",
-		cwd = M.config.kb_path,
+		cwd = M.config.options.skb_path,
 		-- git_bcommits automatically limits to the current buffer
 	})
 end
@@ -99,7 +99,7 @@ function M.note_changes()
 
 	builtin.git_status({
 		prompt_title = "Uncommitted Changes",
-		cwd = M.config.kb_path,
+		cwd = M.config.options.skb_path,
 	})
 end
 
@@ -114,11 +114,11 @@ function M.new_note()
 
 		-- Sanitize filename: replace spaces with dashes, lowercase
 		local filename = input:gsub(" ", "-"):lower()
-		if not filename:match("%." .. M.config.extension .. "$") then
-			filename = filename .. "." .. M.config.extension
+		if not filename:match("%." .. M.config.options.extension .. "$") then
+			filename = filename .. "." .. M.config.options.extension
 		end
 
-		local filepath = M.config.kb_path .. "/" .. filename
+		local filepath = M.config.options.skb_path .. "/" .. filename
 
 		-- Edit the file (creates it if it doesn't exist)
 		vim.cmd("edit " .. filepath)
@@ -136,12 +136,12 @@ end
 -- 5. VERSIONING: Git Sync
 -- Adds all changes, commits with timestamp, and pulls/pushes
 function M.git_sync()
-	if not M.config.git_enabled then
+	if not M.config.options.git.enabled then
 		vim.notify("Git sync is disabled in config", vim.log.levels.WARN)
 		return
 	end
 
-	local path = M.config.kb_path
+	local path = M.config.options.skb_path
 	local timestamp = os.date("%Y-%m-%d %H:%M:%S")
 	local commit_msg = "Auto-sync: " .. timestamp
 

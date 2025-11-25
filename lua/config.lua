@@ -3,7 +3,7 @@ local M = {}
 -- 1. The Default Configuration
 -- This acts as your schema.
 M.defaults = {
-	kb_path = vim.fn.expand("~/knowledge_base"),
+	skb_path = vim.fn.expand("~/knowledge_base"),
 	extension = "md",
 	git = {
 		enabled = true,
