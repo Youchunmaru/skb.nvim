@@ -34,7 +34,7 @@ local function ensure_dir()
 			Job:new({
 				command = "git",
 				args = { "init" },
-				cwd = p.absolute(),
+				cwd = p:absolute(),
 				on_exit = function(_, return_val)
 					if return_val == 0 then
 						vim.schedule(function()
