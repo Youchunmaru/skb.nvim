@@ -1,5 +1,8 @@
--- module: kb.lua
+-- module: skb.lua
 local config = require("skb.config")
+local Path = require("plenary.path")
+local Scan = require("plenary.scandir")
+local Job = require("plenary.job")
 -- A simple knowledge base manager for Neovim
 local M = {}
 
@@ -11,99 +14,98 @@ function M.setup(opts)
 	M.config.setup(opts)
 end
 
--- Helper: Ensure directory exists
-local function ensure_dir()
-	-- 1. Create the directory if it doesn't exist
-	if vim.fn.isdirectory(M.config.options.skb_path) == 0 then
-		vim.fn.mkdir(M.config.options.skb_path, "p")
-	end
-
-	-- 2. Initialize Git if enabled and .git folder is missing
-	if M.config.options.git.enabled then
-		local git_dir = M.config.options.skb_path .. "/.git"
-		if vim.fn.isdirectory(git_dir) == 0 then
-			-- Run git init
-			vim.fn.system("cd " .. M.config.options.skb_path .. " && git init")
-			vim.notify("Knowledge Base: Git repository initialized.", vim.log.levels.INFO)
-		end
-	end
+-- Helper: Get the base path object
+local function get_skb_path()
+	return Path:new(M.config.options.skb_path)
 end
 
--- 1. SEARCH: Wrapper around Telescope Live Grep (uses Ripgrep)
-function M.search_notes()
-	ensure_dir()
-	local ok, builtin = pcall(require, "telescope.builtin")
-	if not ok then
-		vim.notify("Telescope plugin is required for searching!", vim.log.levels.ERROR)
-		return
+-- Helper: Ensure directory exists
+local function ensure_dir()
+	local p = get_skb_path()
+
+	if not p:exists() then
+		p:mkdir({ parents = true })
 	end
 
-	builtin.live_grep({
+	-- Initialize Git if enabled
+	if M.config.options.git.enabled then
+		local git_dir = p:joinpath("/.git")
+		if not git_dir:exists() then
+			Job:new({
+				command = "git",
+				args = { "init" },
+				cwd = p.absolute(),
+				on_exit = function(_, return_val)
+					if return_val == 0 then
+						vim.schedule(function()
+							vim.notify("SKB: Git init succesful", vim.log.levels.INFO)
+						end)
+					end
+				end,
+			}):start()
+		end
+	end
+
+	local t_path = p:joinpath("templates")
+	if not t_path:exists() then
+		t_path:mkdir({ parents = true })
+	end
+end
+-- SEARCH: Wrapper around Telescope Live Grep (uses Ripgrep)
+function M.search_notes()
+	ensure_dir()
+	require("telescope.builtin").live_grep({
 		prompt_title = "Search Knowledge Base",
 		cwd = M.config.options.skb_path,
 	})
 end
 
--- 2. FIND: Wrapper to find specific files by name
+-- FIND: Wrapper to find specific files by name
 function M.find_notes()
 	ensure_dir()
-	local ok, builtin = pcall(require, "telescope.builtin")
-	if not ok then
-		return
-	end
-
-	builtin.find_files({
+	require("telescope.builtin").find_files({
 		prompt_title = "Find Notes",
 		cwd = M.config.options.skb_path,
 	})
 end
 
--- 3. SEARCH HISTORY: View git commits and changes
+-- SEARCH HISTORY: View git commits and changes
 function M.search_history()
 	ensure_dir()
-	local ok, builtin = pcall(require, "telescope.builtin")
-	if not ok then
-		return
-	end
-
-	-- git_commits shows the log. Pressing <cr> usually checks out the commit,
-	-- but the preview window serves as a great way to view changes.
-	builtin.git_commits({
+	require("telescope.builtin").git_commits({
 		prompt_title = "Knowledge Base History (Global)",
 		cwd = M.config.options.skb_path,
 	})
 end
 
--- 4. NOTE HISTORY: View history of CURRENT file
+-- NOTE HISTORY: View history of CURRENT file
 function M.note_history()
 	ensure_dir()
-	local ok, builtin = pcall(require, "telescope.builtin")
-	if not ok then
-		return
-	end
-
-	builtin.git_bcommits({
+	require("telescope.builtin").git_bcommits({
 		prompt_title = "Current Note History",
 		cwd = M.config.options.skb_path,
-		-- git_bcommits automatically limits to the current buffer
 	})
 end
 
--- 5. NOTE CHANGES: View uncommitted changes (Git Status)
+-- NOTE CHANGES: View uncommitted changes (Git Status)
 function M.note_changes()
 	ensure_dir()
-	local ok, builtin = pcall(require, "telescope.builtin")
-	if not ok then
-		return
-	end
-
-	builtin.git_status({
+	require("telescope.builtin").builtin.git_status({
 		prompt_title = "Uncommitted Changes",
 		cwd = M.config.options.skb_path,
 	})
 end
 
--- 6. CREATE: specific function to create a new note with a title
+-- SEARCH TODOS: Scans for "[ ]" or "TODO" in your notes
+function M.search_todos()
+	ensure_dir()
+	require("telescope.builtin").live_grep({
+		prompt_title = "Search TODOs",
+		cwd = M.config.options.skb_path,
+		default_text = "TODO|[ ]",
+	})
+end
+-- CREATE: specific function to create a new note with a title
 function M.new_note()
 	ensure_dir()
 
@@ -137,49 +139,59 @@ end
 -- Adds all changes, commits with timestamp, and pulls/pushes
 function M.git_sync()
 	if not M.config.options.git.enabled then
-		vim.notify("Git sync is disabled in config", vim.log.levels.WARN)
 		return
 	end
 
 	local path = M.config.options.skb_path
 	local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-	local commit_msg = "Auto-sync: " .. timestamp
 
-	-- We chain commands using '&&'.
-	-- 1. cd to path
-	-- 2. git add .
-	-- 3. git commit
-	-- 4. git pull --rebase (to avoid conflicts)
-	-- 5. git push
-	local cmd = string.format("cd %s && git add . && git commit -m '%s'", path, commit_msg)
-	if M.config.options.git.remote then
-		vim.notify("Syncing with remote!", vim.log.levels.INFO)
-		cmd = cmd .. " && git pull --rebase && git push"
-	end
+	vim.notify("Starting Sync...", vim.log.levels.INFO)
 
-	vim.notify("Starting Git Sync...", vim.log.levels.INFO)
+	-- We run this as a sequence of synchronous jobs for simplicity within the async function,
+	-- or chained callbacks. Here is a linear approach using Job:sync() inside a coroutine
+	-- or simply chaining callbacks. For simplicity/readability, let's chain `git add` and `commit`.
 
-	-- Execute asynchronously so we don't freeze Neovim
-	vim.fn.jobstart(cmd, {
-		on_exit = function(_, code, _)
-			if code == 0 then
-				vim.notify("Knowledge Base Synced Successfully!", vim.log.levels.INFO)
-			else
-				vim.notify("Git Sync Failed with code " .. code .. ". Check :messages", vim.log.levels.ERROR)
-			end
-		end,
-		on_stderr = function(_, data, _)
-			-- Log errors to :messages
-			if data then
-				-- formatting for cleaner logs
-				for _, line in ipairs(data) do
-					if line ~= "" then
-						vim.notify("Git Error: " .. line, vim.log.levels.ERROR)
+	Job:new({
+		command = "git",
+		args = { "add", "." },
+		cwd = path,
+		on_exit = function(_, _)
+			Job:new({
+				command = "git",
+				args = { "commit", "-m", "Auto-synv: " .. timestamp },
+				cwd = path,
+				on_exit = function(_, code)
+					if M.config.options.git.remote then
+						Job:new({
+							command = "git",
+							args = { "pull", "rebase" },
+							cwd = path,
+							on_exit = function(_, pull_code)
+								if pull_code == 0 then
+									Job:new({
+										command = "git",
+										args = { "push" },
+										cwd = path,
+										on_exit = function(_, push_code)
+											if push_code == 0 then
+												vim.schedule(function()
+													vim.notify("Sync Complete!", vim.log.levels.INFO)
+												end)
+											end
+										end,
+									}):start()
+								end
+							end,
+						}):start()
+					else
+						vim.schedule(function()
+							vim.notify("Local Commit Complete", vim.log.levels.INFO)
+						end)
 					end
-				end
-			end
+				end,
+			}):start()
 		end,
-	})
+	}):start()
 end
 
 return M
