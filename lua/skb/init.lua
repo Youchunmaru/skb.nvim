@@ -135,7 +135,7 @@ function M.new_note()
 		-- Edit the file (creates it if it doesn't exist)
 		vim.cmd("edit " .. filepath:absolute())
 
-		if filepath:exists() and filepath:_stat().size == 0 or not filepath.exists() then
+		if filepath:exists() and filepath:_stat().size == 0 or not filepath:exists() then
 			local title = input:match("([^/]+)$")
 			local header = "# " .. title
 			vim.api.nvim_buf_set_lines(0, 0, 0, false, { header, "", "" })
