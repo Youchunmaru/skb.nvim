@@ -102,36 +102,92 @@ function M.search_todos()
 	require("telescope.builtin").live_grep({
 		prompt_title = "Search TODOs",
 		cwd = M.config.options.skb_path,
-		default_text = "TODO|[ ]",
+		default_text = "TODO|\\[ \\]",
 	})
 end
 -- CREATE: specific function to create a new note with a title
 function M.new_note()
 	ensure_dir()
 
-	vim.ui.input({ prompt = "New Note Name: " }, function(input)
+	vim.ui.input({ prompt = "New Note Path (e.g., 'folder/name'): " }, function(input)
 		if input == nil or input == "" then
 			return
 		end
 
 		-- Sanitize filename: replace spaces with dashes, lowercase
 		local filename = input:gsub(" ", "-"):lower()
+
 		if not filename:match("%." .. M.config.options.extension .. "$") then
 			filename = filename .. "." .. M.config.options.extension
 		end
 
-		local filepath = M.config.options.skb_path .. "/" .. filename
+		local filepath = get_skb_path():joinpath(filename)
+
+		local parent_dir = filePath:parent()
+		if not parent_dir:exists() then
+			parent_dir:mkdir({ parents = true })
+			vim.notify(
+				"Created new directory: " .. parent_dir:make_relative(M.config.options.skb_path),
+				vim.log.levels.INFO
+			)
+		end
 
 		-- Edit the file (creates it if it doesn't exist)
-		vim.cmd("edit " .. filepath)
+		vim.cmd("edit " .. filepath:absolute())
 
-		-- Optional: Add a title header automatically if new file
-		if vim.fn.getfsize(filepath) == -1 then
-			local header = "# " .. input
+		if filepath:exists() and filepath:_stat().size == 0 or not filepath.exists() then
+			local title = input:match("([^/]+)$")
+			local header = "# " .. title
 			vim.api.nvim_buf_set_lines(0, 0, 0, false, { header, "", "" })
-			-- Move cursor to end
 			vim.cmd("normal G")
+
+			-- add template
+			M.insert_template()
 		end
+	end)
+end
+
+-- TEMPLATES (New Feature): Scans the /templates folder and lets you pick one to insert
+function M.insert_template()
+	ensure_dir()
+	local template_dir = get_skb_path():joinpath("templates")
+
+	-- Get list of files in templates dir
+	local files = Scan.scan_dir(
+		template_dir:absolute(),
+		{ depth = 1, search_pattern = "%." .. M.config.options.extension .. "$" }
+	)
+
+	if #files == 0 then
+		vim.notify("No templates found in /templates folder.", vim.log.levels.WARN)
+		return
+	end
+
+	-- Prepare formatted list for the selection UI
+	local options = {}
+	for _, file in ipairs(files) do
+		-- Show just the filename, not full path
+		table.insert(options, Path:new(file):make_relative(template_dir:absolute()))
+	end
+
+	vim.ui.select(options, { prompt = "Select a Template:" }, function(choice)
+		if not choice then
+			return
+		end
+
+		local selected_file = template_dir:joinpath(choice)
+
+		-- Read the template file
+		local lines = selected_file:read()
+
+		-- Plenary read() returns a string or lines depending on version,
+		-- but usually we need to split if it's a blob.
+		-- A safer vanilla way to read lines into a table:
+		local content = vim.fn.readfile(selected_file:absolute())
+
+		-- Paste content at cursor position
+		local row, _ = unpack(vim.api.nvim_win_get_cursor(0))
+		vim.api.nvim_buf_set_lines(0, row, row, false, content)
 	end)
 end
 
