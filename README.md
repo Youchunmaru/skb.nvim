@@ -77,6 +77,11 @@ return {
                 function() require("skb").note_changes() end, 
                 desc = "[N]ote [C]hanges (Status)" 
             },
+            { 
+                "<leader>nt", 
+                function() require("skb").search_todo() end, 
+                desc = "[N]ote [S]earch (TODO)" 
+            },
         },
     }
 }

@@ -103,7 +103,7 @@ function M.search_todos()
 	require("telescope.builtin").live_grep({
 		prompt_title = "Search TODOs",
 		cwd = M.config.options.skb_path,
-		default_text = "TODO|\\[ \\]",
+		default_text = "todo|\\[ \\]",
 	})
 end
 -- CREATE: specific function to create a new note with a title
