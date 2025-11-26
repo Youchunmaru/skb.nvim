@@ -16,7 +16,8 @@ end
 
 -- Helper: Get the base path object
 local function get_skb_path()
-	return Path:new(M.config.options.skb_path)
+	local expanded_path = vim.fn.expand(M.config.options.skb_path)
+	return Path:new(expanded_path)
 end
 
 -- Helper: Ensure directory exists
