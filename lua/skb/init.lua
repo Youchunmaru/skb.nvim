@@ -123,7 +123,7 @@ function M.new_note()
 
 		local filepath = get_skb_path():joinpath(filename)
 
-		local parent_dir = filePath:parent()
+		local parent_dir = filepath:parent()
 		if not parent_dir:exists() then
 			parent_dir:mkdir({ parents = true })
 			vim.notify(
