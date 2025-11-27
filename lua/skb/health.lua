@@ -26,7 +26,7 @@ local function check_plugin(name)
 	end
 end
 
-function M.check()
+M.check = function()
 	health.start("SKB Knowledge Base Check")
 
 	-- 1. Check Lua Dependencies
