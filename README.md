@@ -34,7 +34,7 @@ return {
             extension = "md",-- the file extension you wanna use for note-taking
             git = {-- git settings
                 enabled = true,-- if you want to use git for history
-                remote = false-- if you want to sync your notes to a repo
+                remote = false-- if you want to sync your notes to a repo, you have to manually add a remote if you want to use that
             }
         },
         dependencies = {
