@@ -28,7 +28,6 @@ A simple, modular Neovim plugin to manage a local knowledge base using Markdown 
 return {
     {
         "Youchunmaru/skb.nvim",
-        main = "skb", 
         opts = {
             kb_path = "~/knowledge_base",-- the path to save your note files in
             extension = "md",-- the file extension you wanna use for note-taking
